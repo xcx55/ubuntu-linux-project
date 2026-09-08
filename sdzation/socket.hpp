@@ -92,6 +92,28 @@ namespace _SOCKET
             netaddr.sin_addr.s_addr = INADDR_ANY; // 宏不需要转
             netaddr.sin_family = AF_INET;         // 交给内核！
         }
+        
+        void Connect()override{
+            socklen_t len=sizeof(sockaddr_in);
+            int n=connect(_sockfd,(sockaddr*)&netaddr,len);
+            if(n==-1){
+                log<<"[fatal] client connect fatal,errno is"<<strerror(errno)<<'\n';
+                exit(0);
+            }
+            else{
+                log<<"[info] client connect success"<<'\n';
+            }
+        }
+
+        TcpSocket(int sockfd)
+        {
+            _sockfd = sockfd;
+        }
+        TcpSocket(char* pa,char* pb){
+            inet_pton(AF_INET,pa,&netaddr.sin_addr);
+            netaddr.sin_port=htons(std::stoi(pb));
+            netaddr.sin_family=AF_INET;
+        }
         void BulidTcpclient()override{
             _sockfd = socket(AF_INET, SOCK_STREAM, 0);
             if (_sockfd < 0)
@@ -103,19 +125,6 @@ namespace _SOCKET
             {
                 log << "[info] TCP creat sucuess" << '\n';
             }
-        }
-        void Connect(){
-            connect();
-        }
-
-        TcpSocket(int sockfd)
-        {
-            _sockfd = sockfd;
-        }
-        TcpSocket(char* pa,char* pb){
-            inet_pton(AF_INET,pa,&netaddr.sin_addr);
-            netaddr.sin_port=std::stoi(pb);
-            netaddr.sin_family=AF_INET;
         }
         void CreatSocketOrDie()override
         {
@@ -171,8 +180,7 @@ namespace _SOCKET
             ps->sin_port = ntohs(pa.sin_port);
             ps->sin_addr.s_addr = ntohl(pa.sin_addr.s_addr);
             ps->sin_family = pa.sin_family;
-            _sockfd = n;
-            return std::make_shared<TcpSocket>(_sockfd); // 返回指向TcpSocket表的指针
+            return std::make_shared<TcpSocket>(n); // 返回指向TcpSocket表的指针
         }
         bool Havefd()
         {

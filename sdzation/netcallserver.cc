@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     //3、服务层
     std::unique_ptr<Tcpserver> server = std::make_unique<Tcpserver>([&pt](std::string &inbuff)
                                                                         -> std::string
-                                                                    { return pt->Parse(inbuff); },
+                                                                    { return pt->requestParse(inbuff); },
                                                                     argv[1]);
     server->Loop();
     return 0;

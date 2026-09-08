@@ -46,6 +46,7 @@ public:
     int _data_y;
     char _oper;
 };
+
 // 回复
 class response
 {
@@ -75,7 +76,7 @@ public:
     bool Serialize(std::string &a)
     { // 序列化  转为字符串
         Json::Value value;
-        value["_result"] = _result;
+        value["result"] = _result;
         value["code"] = _code;
         Json::FastWriter write;
         a = write.write(value);
@@ -87,6 +88,7 @@ public:
     int _result;
     int _code; // 状态码！
 };
+using cr=void(*)(response&);
 
 static const std::string stp = "\r\n";
 using handler_t = std::function<response(request &)>;
@@ -96,6 +98,10 @@ class protocol
 public:
     protocol(handler_t g)
         : version("1.0"), _cb(g)
+    {
+    }
+    protocol(cr g)
+        : version("1.0"), _cr(g)
     {
     }
 
@@ -131,14 +137,15 @@ public:
         return 1;
     }
 
-    std::string Parse(std::string &inbuff)
+    std::string requestParse(std::string &inbuff)
     {
-        std::string allresult;
+        //传来的长度
+        std::string allresult;//为什么要在外面？因为有些解析失败了 要保留序列化 以及size！
         while (true)
-        {
+        {//只要这里有一个break 说明报文这里是不完整的！！
             std::string Jsonstring;
             int n = Unpack(inbuff, &Jsonstring);
-            if (n > 0)
+            if (n < 0)
             {
                 log << "[error] Parse Unpack error,such as:Jsonstring is nullptr" << '\n';
                 // return "";
@@ -151,7 +158,7 @@ public:
                 break;
             }
             // 牺牲这么多，得到完整的Jsonstring的string 需要JSON翻译，reader的parse回去
-            request pq;
+            request pq;//
             if (!pq.DeSerialize(Jsonstring))
             {
                 log << "[error] server Deserialize error" << '\n';
@@ -161,7 +168,7 @@ public:
             response res;
             if (_cb)
                 res = _cb(pq); // 计算完毕，进行序列化
-            std::string Get;
+            std::string Get;//输出型参数
             if (!res.Serialize(Get))
             {
                 log << "[error] server serialize error" << '\n';
@@ -172,8 +179,55 @@ public:
         }
         return allresult;
     }
+    std::string reponseParse(std::string &inbuff)
+    {
+        //传来的长度
+        // std::string allresult;//为什么要在外面？因为有些解析失败了 要保留序列化 以及size！
+        // while (true)
+        {
+            std::string Jsonstring;
+            int n = Unpack(inbuff, &Jsonstring);
+            if (n < 0)
+            {
+                log << "[error] Parse Unpack error,such as:Jsonstring is nullptr" << '\n';
+                // return "";
+                return "";
+            }
+            else if (n == 0)
+            {
+                log << "[info] recv is not all baowen" << '\n';
+                return "";
+                // break;
+            }
+            // 牺牲这么多，得到完整的Jsonstring的string 需要JSON翻译，reader的parse回去
+            response pq;//
+            if (!pq.DeSerialize(Jsonstring))
+            {
+                log << "[error] server Deserialize error" << '\n';
+                return "";
+                // break;
+            }
+            if(_cr)
+            _cr(pq);
+
+            // response res;
+            // // if (_cb)
+            // //     res = _cb(pq); // 计算完毕，进行序列化
+            // std::string Get;//输出型参数
+            // if (!res.Serialize(Get))
+            // {
+            //     log << "[error] server serialize error" << '\n';
+            //     // return "";
+            //     break;
+            // }
+            // allresult += Pack(Get);
+        }
+        return "yes";
+        // return allresult;
+    }
 
 private:
     std::string version;
     handler_t _cb;
+    cr _cr;
 };

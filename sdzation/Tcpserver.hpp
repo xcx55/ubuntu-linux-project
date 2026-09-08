@@ -36,7 +36,7 @@ public:
         while (true)
         {
             sockaddr_in ps;
-            auto &&p = _sockptr->Accept(&ps);
+            auto &&p = _sockptr->Accept(&ps);//没有服务端 就会阻塞！
             if (!p->Havefd())
             {
                 log << "[debug] not have fd,again" << '\n';
@@ -66,8 +66,9 @@ private:
         while (true)
         {
             // in.clear();
-            out.clear();
+            // out.clear();
             int n = a->Recv(&in);
+            log<<"[info] 服务端接收到的报文"<<in<<'\n';
             // log<<"[info]"<<fa.c_str()<<'\n';
             if (n <= 0)
             {
@@ -79,12 +80,14 @@ private:
                 out = _cb(in); // 这里包含了很多逻辑！
             if (out.empty())
                 continue;
+            log<<"[info] 从requestparse函数里面获得的字符串"<<out<<'\n';
             n = a->Send(out);
             if (n <= 0)
             {
-                log << "[error] Recv error or client exit" << net_to_host(&user) << '\n';
+                log << "[error] Recv error or client exit,errno is"<<strerror(errno) << net_to_host(&user) << '\n';
                 break;
             }
+            out.clear();
         }
     }
 
